@@ -9,7 +9,7 @@ namespace AspNetCore.GlobalException.Exceptions
     /// <summary>
     /// Validation Exception
     /// </summary>
-    internal class ValidationException : GlobalExceptionBase
+    public class ValidationException : GlobalExceptionBase
     {
         public ValidationException(string message, 
             int errorCode = ExceptionDefaults.DefaultValidationErrorCode, 

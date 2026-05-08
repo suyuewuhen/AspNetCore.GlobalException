@@ -8,7 +8,7 @@ namespace AspNetCore.GlobalException.Exceptions
     /// <summary>
     /// 授权异常
     /// </summary>
-    internal class AuthorizationException : GlobalExceptionBase
+    public class AuthorizationException : GlobalExceptionBase
     {
         public AuthorizationException(string message = "未授权访问", int errorCode = ExceptionDefaults.DefaultAuthErrorCode, string? traceId = null, bool isUserFriendly = true, Exception? exception = null) : base(message, errorCode, traceId, isUserFriendly, exception)
         {

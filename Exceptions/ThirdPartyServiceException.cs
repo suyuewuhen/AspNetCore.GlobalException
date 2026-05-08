@@ -5,7 +5,7 @@ using System.Text;
 
 namespace AspNetCore.GlobalException.Exceptions
 {
-    internal class ThirdPartyServiceException : GlobalExceptionBase
+    public class ThirdPartyServiceException : GlobalExceptionBase
 
     {
         public string ServiceName { get; }

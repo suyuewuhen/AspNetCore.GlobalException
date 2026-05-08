@@ -8,7 +8,7 @@ namespace AspNetCore.GlobalException.Exceptions
     /// <summary>
     /// BusinessException
     /// </summary>
-    internal class BusinessException : GlobalExceptionBase
+    public class BusinessException : GlobalExceptionBase
     {
         public BusinessException(string message,
             int errorCode = ExceptionDefaults.DefaultBusinessErrorCode, 
