@@ -50,7 +50,8 @@ namespace AspNetCore.GlobalException.Middleware
                     await _options.OnExceptionBeforeHandle(context, ex);
                 }
 
-                var handler = _exceptionHandlers.FirstOrDefault(h => h.CanHandle(ex));
+                var handler = _exceptionHandlers.FirstOrDefault(h => h.CanHandle(ex)) 
+                    ?? throw new InvalidOperationException("No exception handler found for the current exception. Ensure DefaultExceptionHandler is registered.");
 
                 await handler.HandleAsync(context, ex, _options);
 
