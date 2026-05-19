@@ -177,6 +177,36 @@ builder.Services.AddGlobalException(options =>
 });
 ```
 
+### 自定义敏感字段脱敏策略
+
+```csharp
+builder.Services.AddGlobalException(options =>
+{
+    // 自定义脱敏规则，不同字段采用不同脱敏方式
+    options.SensitiveValueMasker = (fieldName, value) =>
+    {
+        // 手机号：保留前3后4
+        if (fieldName.Equals("phone", StringComparison.OrdinalIgnoreCase) && value.Length >= 11)
+        {
+            return $"{value.Substring(0, 3)}****{value.Substring(7, 4)}";
+        }
+        // 身份证号：保留前6后4
+        if (fieldName.Equals("idcard", StringComparison.OrdinalIgnoreCase) && value.Length >= 18)
+        {
+            return $"{value.Substring(0, 6)}********{value.Substring(14, 4)}";
+        }
+        // 邮箱：保留用户名前2位和域名
+        if (fieldName.Equals("email", StringComparison.OrdinalIgnoreCase) && value.Contains('@'))
+        {
+            var parts = value.Split('@');
+            return parts[0].Length > 2 ? $"{parts[0].Substring(0, 2)}***@{parts[1]}" : $"***@{parts[1]}";
+        }
+        // 默认规则：保留首尾各1位，中间用***代替
+        return value.Length <= 2 ? "**" : $"{value[0]}***{value[^1]}";
+    };
+});
+```
+
 ## 配置选项说明
 
 | 配置项 | 类型 | 默认值 | 说明 |
@@ -189,6 +219,7 @@ builder.Services.AddGlobalException(options =>
 | `OnExceptionBeforeHandle` | `Func<HttpContext, Exception, Task>?` | `null` | 异常处理前的钩子函数 |
 | `OnExceptionAfterHandle` | `Func<HttpContext, Exception, Task>?` | `null` | 异常处理后的钩子函数 |
 | `EnableTracing` | `bool` | `true` | 是否在响应中返回TraceId |
+| `SensitiveValueMasker` | `Func<string, string, string>` | 默认实现 | 自定义敏感字段脱敏函数，输入为字段名和原始值，返回脱敏后的值 |
 
 ## 敏感字段脱敏
 

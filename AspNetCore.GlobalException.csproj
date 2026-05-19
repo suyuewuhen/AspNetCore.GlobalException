@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<PackageId>suweishi.AspNetCore.GlobalException</PackageId>
-	<Version>1.0.0</Version>
+	<Version>1.0.1</Version>
 	<Authors>suweishi</Authors>
 	<Description>企业级高复用ASP.NET Core全局异常处理组件，内置异常分级、结构化日志、链路追踪、全场景可配置</Description>
 	<PackageProjectUrl>https://github.com/suyuewuhen/AspNetCore.GlobalException</PackageProjectUrl>
@@ -16,7 +16,6 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
   </ItemGroup>
 
 </Project>

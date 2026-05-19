@@ -55,5 +55,18 @@ namespace AspNetCore.GlobalException.Options
         /// 开启后：异常会自动带上 TraceId，方便分布式系统定位请求
         /// </summary>
         public bool EnableTracing { get; set; } = true;
+
+        /// <summary>
+        /// 自定义敏感字段脱敏函数
+        /// 输入参数：字段名、原始值
+        /// 返回值：脱敏后的值
+        /// 默认实现：值长度<=2返回**，否则保留首尾各1位，中间用***代替
+        /// </summary>
+        public Func<string, string, string> SensitiveValueMasker { get; set; } = (fieldName, value) =>
+        {
+            if (value.Length <= 2)
+                return "**";
+            return $"{value[0]}***{value[^1]}";
+        };
     }
 }

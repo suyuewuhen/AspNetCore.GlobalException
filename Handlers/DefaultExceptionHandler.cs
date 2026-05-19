@@ -46,7 +46,7 @@ namespace AspNetCore.GlobalException.Handlers
             var isDevelopment = _hostEnvironment.IsDevelopment();
             var includeStackTrace = options.IncludeStackTrace || isDevelopment;
             var (errorCode, message, logLevel) = ResolveExceptionInfo(exception, options, isDevelopment);
-            await WriteStructuredLog(context, exception, traceId, logLevel, options.SensitiveFieldNames);
+            await WriteStructuredLog(context, exception, traceId, logLevel, options);
             await _responseFormatter.FormatResponseAsync(context, errorCode, message, traceId, includeStackTrace ? exception.StackTrace : null,options);
         }
 
@@ -60,10 +60,10 @@ namespace AspNetCore.GlobalException.Handlers
         /// <param name="logLevel">日志级别</param>
         /// <param name="sensitiveFieldNames">敏感字段名称列表</param>
         /// <returns>表示异步操作的任务</returns>
-        private async Task WriteStructuredLog(HttpContext context, Exception exception, string? traceId, LogLevel logLevel, List<string> sensitiveFieldNames)
+        private async Task WriteStructuredLog(HttpContext context, Exception exception, string? traceId, LogLevel logLevel, ExceptionHandlingOptions options)
         {
             // 读取请求参数并脱敏
-            var requestParams = await GetRequestParametersAsync(context, sensitiveFieldNames);
+            var requestParams = await GetRequestParametersAsync(context, options.SensitiveFieldNames, options.SensitiveValueMasker);
             
             using var logScope = _logger.BeginScope(new Dictionary<string, object>
             {
@@ -81,14 +81,14 @@ namespace AspNetCore.GlobalException.Handlers
         /// <summary>
         /// 获取并脱敏请求参数
         /// </summary>
-        private async Task<Dictionary<string, object>> GetRequestParametersAsync(HttpContext context, List<string> sensitiveFieldNames)
+        private async Task<Dictionary<string, object>> GetRequestParametersAsync(HttpContext context, List<string> sensitiveFieldNames, Func<string, string, string> sensitiveValueMasker)
         {
             var parameters = new Dictionary<string, object>();
             
             // 处理Query参数
             foreach (var (key, value) in context.Request.Query)
             {
-                parameters[key] = MaskSensitiveValue(key, value.ToString(), sensitiveFieldNames);
+                parameters[key] = MaskSensitiveValue(key, value.ToString(), sensitiveFieldNames, sensitiveValueMasker);
             }
 
             // 处理Form参数
@@ -96,7 +96,7 @@ namespace AspNetCore.GlobalException.Handlers
             {
                 foreach (var (key, value) in context.Request.Form)
                 {
-                    parameters[key] = MaskSensitiveValue(key, value.ToString(), sensitiveFieldNames);
+                    parameters[key] = MaskSensitiveValue(key, value.ToString(), sensitiveFieldNames, sensitiveValueMasker);
                 }
             }
 
@@ -113,7 +113,7 @@ namespace AspNetCore.GlobalException.Handlers
                     try
                     {
                         var jsonDoc = JsonDocument.Parse(bodyContent);
-                        ExtractJsonParameters(jsonDoc.RootElement, parameters, sensitiveFieldNames, string.Empty);
+                        ExtractJsonParameters(jsonDoc.RootElement, parameters, sensitiveFieldNames, sensitiveValueMasker, string.Empty);
                     }
                     catch
                     {
@@ -129,7 +129,7 @@ namespace AspNetCore.GlobalException.Handlers
         /// <summary>
         /// 递归提取JSON参数并脱敏
         /// </summary>
-        private void ExtractJsonParameters(JsonElement element, Dictionary<string, object> parameters, List<string> sensitiveFieldNames, string prefix)
+        private void ExtractJsonParameters(JsonElement element, Dictionary<string, object> parameters, List<string> sensitiveFieldNames, Func<string, string, string> sensitiveValueMasker, string prefix)
         {
             switch (element.ValueKind)
             {
@@ -137,7 +137,7 @@ namespace AspNetCore.GlobalException.Handlers
                     foreach (var property in element.EnumerateObject())
                     {
                         var fullKey = string.IsNullOrEmpty(prefix) ? property.Name : $"{prefix}.{property.Name}";
-                        ExtractJsonParameters(property.Value, parameters, sensitiveFieldNames, fullKey);
+                        ExtractJsonParameters(property.Value, parameters, sensitiveFieldNames, sensitiveValueMasker, fullKey);
                     }
                     break;
                 case JsonValueKind.Array:
@@ -145,14 +145,14 @@ namespace AspNetCore.GlobalException.Handlers
                     foreach (var item in element.EnumerateArray())
                     {
                         var fullKey = $"{prefix}[{index}]";
-                        ExtractJsonParameters(item, parameters, sensitiveFieldNames, fullKey);
+                        ExtractJsonParameters(item, parameters, sensitiveFieldNames, sensitiveValueMasker, fullKey);
                         index++;
                     }
                     break;
                 default:
                     var value = element.ToString();
                     var key = prefix.Split('.').Last(); // 取最后一级作为字段名判断是否敏感
-                    parameters[prefix] = MaskSensitiveValue(key, value, sensitiveFieldNames);
+                    parameters[prefix] = MaskSensitiveValue(key, value, sensitiveFieldNames, sensitiveValueMasker);
                     break;
             }
         }
@@ -160,7 +160,7 @@ namespace AspNetCore.GlobalException.Handlers
         /// <summary>
         /// 脱敏敏感字段值
         /// </summary>
-        private string MaskSensitiveValue(string fieldName, string value, List<string> sensitiveFieldNames)
+        private string MaskSensitiveValue(string fieldName, string value, List<string> sensitiveFieldNames, Func<string, string, string> sensitiveValueMasker)
         {
             if (string.IsNullOrWhiteSpace(fieldName) || string.IsNullOrWhiteSpace(value))
                 return value;
@@ -168,10 +168,7 @@ namespace AspNetCore.GlobalException.Handlers
             // 检查是否是敏感字段
             if (sensitiveFieldNames.Any(f => fieldName.Equals(f, StringComparison.OrdinalIgnoreCase)))
             {
-                if (value.Length <= 2)
-                    return "**";
-                // 保留前1后1，中间用*代替
-                return $"{value[0]}***{value[^1]}";
+                return sensitiveValueMasker(fieldName, value);
             }
 
             return value;
